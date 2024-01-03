@@ -5,7 +5,7 @@ from dask.diagnostics import ProgressBar
 from dask import delayed, compute
 import matplotlib.pyplot as plt
 from scipy.stats import bootstrap
-from tqdm import tqdm  
+from tqdm import tqdm  # assuming my code is going to be run in notebook
 from collections import namedtuple
 import torch
 import random
@@ -30,19 +30,6 @@ ham_1_1_05 = of.get_sparse_operator(of.QubitOperator(
 ham_1_1_05 = torch.reshape(torch.tensor(ham_1_1_05, dtype=torch.complex64),
                            tuple([2 for i in range(int(np.log2(ham_1_1_05.size)))]))
 
-
-def create_zz_operator(n):
-    operator = of.QubitOperator()
-    for i in range(n):
-        for j in range(i+1, n):
-            operator += of.QubitOperator(f'Z{i} Z{j}')
-
-    operator = of.get_sparse_operator(operator)
-
-    operator = torch.reshape(torch.tensor(operator,dtype=torch.complex64),tuple([2 for i in range(int(np.log2(ham_1_1_05.size)))]))
-
-    return operator
-
 """
 Generate gradient variance shots using 3 possible methods for different ansatz.
 
@@ -62,7 +49,12 @@ def ApplyGate(U, qubits, psi):
     indices += ''.join([chr(97+i-32*qubits.count(i))
                        for i in range(len(psi.shape))])
 
+#     print("U", U)
+#     print("qubits", qubits)
+#     print("indices",indices)
+
     return torch.einsum(indices, U, psi)
+
 
 def Inner(psi_1, psi_2):
     '''<psi_1|psi_2>'''
@@ -71,11 +63,13 @@ def Inner(psi_1, psi_2):
     indices += ''.join([chr(97+q) for q in range(len(psi_2.shape))])
     return torch.einsum(indices, psi_1.conj(), psi_2)
 
+
 def Basis(n):
     '''Returns the computational basis states for n qubits'''
     def i2binarray(i):
         return [int(c) for c in bin(i)[2:].zfill(n)]
     return [i2binarray(i) for i in range(2**n)]
+
 
 def initial_state(n_qubits):
     '''Initializes the qubits on the computational basis'''
@@ -84,6 +78,7 @@ def initial_state(n_qubits):
     for i in range(n_qubits-1):
         psi = torch.kron(psi, zero)
     return psi.reshape((2,)*n_qubits)
+
 
 # Gate Definitons--------------------------------------------------------------
 
@@ -293,27 +288,61 @@ def random_measurements_num(n_layers, n_qubits, size):
         return measure_list
 
 
-def layer_measure(psi_list, p, gradient_technique, post_selected, measurements, layer, specific_measurement, measurement_index):
+def layer_measure(psi_list, p, gradient_technique, post_selected, measurements, layer):
     if measurements is not None:
         measurements = np.array(measurements)
         relevant_qubits = measurements[np.where(
             measurements[:, 0] == layer)][:, 1:]
         if len(relevant_qubits):
-            return apply_measure(psi_list, relevant_qubits.tolist(),
-                          p, gradient_technique, post_selected, specific_measurement, measurement_index)
+            apply_measure(psi_list, relevant_qubits.tolist(),
+                          p, gradient_technique, post_selected)
+            
+def even_bisect_measurements(n_layers, n_qubits, n):
+    '''generate a list of 'n' measurements, bisecting the circuit into n evenly divided pieces 
+    and ensuring nearby measurements are spaced apart on qubits.'''
+
+    total_positions = n_layers * n_qubits
+    partition_size = total_positions / n
+
+    measure_list = []
+    last_qubit_num = None
+    occupied_qubits = set()
+
+    for i in range(n):
+        # Calculate the middle of the i-th partition for layer placement
+        middle_position = (partition_size / 2) + (i * partition_size)
+        depth = int(middle_position // n_qubits)
+
+        # Decide qubit number based on the last measurement's qubit number
+        if last_qubit_num is None:  # If this is the first measurement
+            qubit_num = n_qubits // 2 if n_qubits % 2 == 0 else (n_qubits - 1) // 2
         else:
-            return []
+            middle_qubit = n_qubits // 2
+            if last_qubit_num < middle_qubit:
+                qubit_num = min(n_qubits - 2, last_qubit_num + 2)
+            else:
+                qubit_num = max(1, last_qubit_num - 2)
+        
+        # If qubit_num is already occupied for this depth, adjust its placement
+        while (depth, qubit_num) in occupied_qubits:
+            qubit_num = (qubit_num + 3) % n_qubits
+        
+        measure_list.append([depth, qubit_num])
+        occupied_qubits.add((depth, qubit_num))
+        last_qubit_num = qubit_num
+
+    return measure_list
+
+
 
 
 def apply_measure(psi_list, measurements, pM, gradient_technique,
-                  post_selected=True, specific_measurements=None, measurement_index=0):
+                  post_selected=True):
     '''project the wavefunctions onto some randomly sampled basis
     returns the unnormalized (conditional) probabiliy
     This is the most subtle part of the entire code so be careful
     We do not normalize psi at each step so the output wavefunctions are
     \tilde{\psi}'''
-
-    outcomes = []
 
     for q in measurements:
 
@@ -329,16 +358,10 @@ def apply_measure(psi_list, measurements, pM, gradient_technique,
             p0, p1 = prob_rounder(p0, i)
 
             # if not post-selected, make the outcome from the first (normal) circuit
-            if i == 0 and specific_measurements != None:
-                outcome = specific_measurements[measurement_index]
-                measurement_index = measurement_index + 1 
-            elif i == 0 and post_selected == False:
+            if i == 0 and post_selected == False:
                 outcome = np.random.choice([0, 1], 1, p=[p0, p1])[0]
             elif i == 0 and post_selected == True:
                 outcome = 0
-
-            if i == 0:
-                outcomes.append(outcome)
 
             if i == 0:
                 original_p = [p0, p1][outcome]
@@ -353,8 +376,6 @@ def apply_measure(psi_list, measurements, pM, gradient_technique,
             else:
                 psi_list[i] = ApplyGate(
                     measure(outcome), q, psi_list[i])/np.sqrt(p_i)
-                
-    return outcomes
 
 
 def gradients_by_layer(n_qubits, n_layers, parameters, gradient_technique="numeric",
@@ -362,7 +383,7 @@ def gradients_by_layer(n_qubits, n_layers, parameters, gradient_technique="numer
                        return_analytic_suite=False, post_selected=False,
                        entropy_regions=[[]], periodic=False,
                        get_layered_results=False, ham_type="z0z1",
-                       ansatz="GG", rotations=None,specific_measurement= None):
+                       ansatz="GG", rotations=None,):
     """
     Given chosen circuit parameters and a method to generate the gradient, constructs
     appropriate psi's and uses them to return unaware, aware gradients or more
@@ -390,7 +411,7 @@ def gradients_by_layer(n_qubits, n_layers, parameters, gradient_technique="numer
                                      gradient_index, measurements, dtheta,
                                      return_analytic_suite, post_selected,
                                      entropy_regions, periodic,
-                                     get_layered_results, ham_type,specific_measurement)
+                                     get_layered_results, ham_type,)
 
     if ansatz == "HEA2_uber_parameters":
 
@@ -668,15 +689,14 @@ def layer_CNOT_odd(n_qubits, psi_list, periodic_boundary=False):
 
 # HEA2 VQE specific code---------------------------------------------------------
 
+
 def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="numeric",
                           gradient_index=0, measurements=None, dtheta=.00001,
                           return_analytic_suite=False, post_selected=False,
                           entropy_regions=[[]], periodic=False,
-                          get_layered_results=False, ham_type="z0z1",specific_measurement=None):
+                          get_layered_results=False, ham_type="z0z1",):
 
     layer_results = []
-    outcomes = []
-    outcome_index = 0 
 
     if gradient_technique == "shift":
         # create nonshifted, -, + versions of psi , for each individually shifted psi
@@ -696,8 +716,6 @@ def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
     p = [1.0 for _ in psi_list]  # probability for each psi
     current_param = 0  # start with parameter 0
 
-    p_by_layer = []
-
     for l in range(n_layers):
         # 1: paramaterized Ry rotation gates on all qubits
 
@@ -716,27 +734,23 @@ def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
                   gradient_technique, gradient_index, dtheta)
         current_param += 1
 
+        # If measurements are provided apply them
+        layer_measure(psi_list, p, gradient_technique,
+                      post_selected, measurements, l)
+
         if get_layered_results:
             layer_results.append(gradients_HEA(
                 n_qubits, psi_list, gradient_technique, p,
                 dtheta, return_analytic_suite, entropy_regions,
                 ham_type, periodic))
 
-        # If measurements are provided apply them
-        measurement_outcome = layer_measure(psi_list, p, gradient_technique,
-                      post_selected, measurements, l, specific_measurement, outcome_index)
-        if measurement_outcome != None:
-            outcomes.extend(measurement_outcome)
-            #print(measurement_outcome)
-            outcome_index = outcome_index + len(measurement_outcome)
-        p_by_layer.append(p[0])
-        
     if get_layered_results:
-        return layer_results, outcomes,p_by_layer
+        return layer_results
     else:
+        #         print(psi_list)
         return gradients_HEA(n_qubits, psi_list, gradient_technique, p,
                              dtheta, return_analytic_suite, entropy_regions,
-                             ham_type, periodic), outcomes
+                             ham_type, periodic)
 
 
 def layer_H(n_qubits, psi_list, qubit_range):
@@ -802,7 +816,6 @@ def gradients_HEA(n_qubits, psi_list, gradient_technique, p, dtheta,
     else:  # analytical gradient
 
         C = Inner(psi, cost_psi).real
-        return C
 
         # Calculate the gradients using eqn 22 in the notes. Note we are not multiplying by p because of MC sampling
         term1 = Inner(psi_list[1], cost_psi)  # first term
@@ -1531,112 +1544,84 @@ def generate_entropy_results(qubit_range, n_layers, n_samples,
 
     return results
 
-def prepare_random_unitary_expectation():
-    return NotImplementedError
+def probability_to_measure_one_given_parameters(n_qubits, n_layers, parameters, measurements):
 
-# Mutual entropy code ----------------------------------
-
-def probability_to_measure_one_given_parameters(n_qubits, n_layers, parameters, measurements, specific_outcome= None, final_outcome_in = None):
-
-        z0z1_func, outcomes,pM = gradients_by_layer(n_qubits, n_layers,
+        z0z1_func = gradients_by_layer(n_qubits, n_layers,
                                           parameters,
                                           rotations=None,
                                           gradient_technique="analytic",
                        gradient_index=0, measurements=measurements,
                        return_analytic_suite=True, post_selected=False,
                        entropy_regions=False, periodic=True,
-                       get_layered_results=True, ham_type="z0z1",
-                       ansatz="HEA2", specific_measurement=specific_outcome) # TODO get rid of everything related to gradient in this calculation
-        z0z1_func = np.asarray(z0z1_func)
+                       get_layered_results=False, ham_type="z0z1",
+                       ansatz="HEA2")[0]
+        
         prob_1 = (1+z0z1_func)/2
         prob_minus_1 = (1-z0z1_func)/2
 
-        #print(prob_1, prob_minus_1)
+        return prob_1, prob_minus_1 
 
-        prob_1 = np.where(prob_1 < 0, 0, prob_1)
-       
-        prob_minus_1 = np.where(prob_minus_1<0,0,prob_minus_1)
+def generate_mutual_info_sample_a(n_qubits,n_layers,parameters,measurements,n_c):
+    # n_c is the number of measurements
 
-        results = []
-        final_outcomes = []
+    if measurements == None or measurements == [[]]:
+        n_c = 1 # don't accidentally run measurement outcome shots if there are no measurements
 
-        for i in range(n_layers):
-            #print([prob_1[i],prob_minus_1[i]])
-            if final_outcome_in == None:
-                final_outcome = np.random.choice([0,1],p=[prob_1[i],1-prob_1[i]])
-            else:
-                final_outcome = final_outcome_in[i]
-            final_prob = [prob_1[i],1-prob_1[i]][final_outcome]*pM[i]
-            final_outcomes.append(final_outcome)
-            results.append(final_prob)
+    samples = []
 
-       # results are in shape 
-        return results, outcomes, final_outcomes
+    for _ in tqdm(range(n_c), leave=False, desc="Measurement samples"):
+        samples.append(probability_to_measure_one_given_parameters(n_qubits, n_layers, parameters, measurements))
 
-@dask.delayed
-def probability_to_measure_one_given_parameters_delayed(n_qubits, n_layers, parameters, measurements, specific_outcome=None, final_outcome=None):
-    return probability_to_measure_one_given_parameters(n_qubits, n_layers, parameters, measurements, specific_outcome,final_outcome)
+    # looks correct up to this step 
+
+    return samples
 
 
-def generate_mutual_info_samples_dask_change_all_parameters(n_qubits, n_layers,  n_a, n_c, measurements): 
+def generate_mutual_info_samples(n_qubits, n_layers, parameters, measurements, n_a, n_c): 
 
     rng = np.random.default_rng()
     #generate list of random theta_a
+    random_a = rng.uniform(low=-np.pi, high=np.pi, size = n_a)
+
     samples = [] 
-    parameters_original = random_parameters(num_parameters(n_qubits, n_layers, "HEA2")) # appending a tuple (n_c,2, n_layers) to samples 
-    original_sample, outcome, final_outcome = probability_to_measure_one_given_parameters(n_qubits, n_layers, parameters_original, measurements,specific_outcome=None,final_outcome_in=None)  
-    print(outcome,final_outcome)
-    for _ in range(n_a):
-        parameters = random_parameters(num_parameters(n_qubits, n_layers, "HEA2")) # appending a tuple (n_c,2, n_layers) to samples 
-        samples.append(probability_to_measure_one_given_parameters_delayed(n_qubits, n_layers, parameters, measurements, outcome, final_outcome))
 
-    results = dask.compute(*samples)
+    for theta_a in tqdm(random_a,leave=False, desc="theta_a"):
+       parameters_copy = np.copy(parameters)
+       parameters_copy[0] = theta_a
+       # appending a tuple (n_c,2) to samples 
+       samples.append(generate_mutual_info_sample_a(n_qubits,n_layers,parameters_copy,measurements,n_c))
 
-    results_final = []
+    # overall shape (n_a, n_c, 2) 
+    return samples 
 
-    for sample, _, _ in results:
-        results_final.append(sample)
+def marginal_distribution_from_joint_samples(samples):
+    # samples are passed in the shape (n_a, n_c, 2)
+    # average over different theta_a 
+    return np.mean(samples,axis=0)
 
-    results_final.append(original_sample)
+def mutual_information_for_one_phi_vec(n_qubits,n_layers,parameters,measurements,n_a, n_c):
 
-    results_final = np.reshape(results_final, (n_a+1, n_layers))
+    samples = generate_mutual_info_samples(n_qubits, n_layers, parameters, measurements, n_a, n_c)
 
-    # overall shape (n_a, n_layers) 
-    return results_final
+    p_bi = marginal_distribution_from_joint_samples(samples)
 
-def mutual_information_change_all_parameters(n_qubits,n_layers,measurements, n_a,n_c):
+    print("the shape of the day",(p_bi/samples).shape)
 
-    #uses dask 
-    samples = generate_mutual_info_samples_dask_change_all_parameters(n_qubits, n_layers, n_a, n_c, measurements)
+    mutual_info = - np.sum(np.log(p_bi/samples)) / (n_a * n_c)  
 
-    print(samples.shape)
+    return mutual_info
 
-    p_i_m_given_thetas = samples[:]
+def overall_mutual_information(n_qubits, n_layers, measurements, n_p, n_a, n_c):
 
-    print("p_i_m given thetas", p_i_m_given_thetas)
+    mutual_info = 0 
+    
+    for _ in tqdm(range(n_p)):
+        parameters = random_parameters(num_parameters(n_qubits,n_layers,"HEA2")) 
+        mutual_info = mutual_info + mutual_information_for_one_phi_vec(n_qubits, n_layers, parameters, measurements, n_a,n_c)
 
-    p_bi_aware = np.mean(samples[:,:], axis=(0))
+    return mutual_info
 
-    print("p_bi_aware", p_bi_aware)
-    print("p_bi_aware_variance", np.std(samples[:,:], axis=(0)))
-
-    # print("numerator", p_i_m_given_thetas)
-
-    # # print("denominator", p_bi_aware)
-
-    # p_bi_unaware = np.mean(p_i_m_given_thetas, axis=(0,1))
-
-    # p_i_given_thetas = np.mean(p_i_m_given_thetas, axis=(1))
-
-    # sum over every axis except for the number of layers, for both aware + unawareuuu
-
-    mutual_info_aware = - np.sum(np.log(p_bi_aware/p_i_m_given_thetas),axis=0)
-    #mutual_info_unaware = - np.sum(np.log(p_bi_unaware/p_i_given_thetas),axis=(0))
-
-    return mutual_info_aware #mutual_info_unaware
-
-# END OF MUTUAL INFORMATION CALCUALTIONS ---------------------------------------------------------------------------------------------------------------
-
+    
 def dividing_measurement_gates(n_qubits, n_layers, n_sub_circuits):
     step = n_layers // n_sub_circuits
     points = [[step * i-1, n_qubits // 2 - 1]
