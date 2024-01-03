@@ -148,4 +148,13 @@ def mutual_information_change_all_parameters(n_qubits,n_layers,n_a, measurements
 
     return mutual_info 
 
-def mutual_info_different_measurements(n_qubits)
+def mutual_info_different_measurements(n_qubits, n_layers, n_a, p):
+
+    overall_mutual_info = []
+
+    for _ in range(n_a):
+
+        measurements = random_measurements_prob(n_layers, n_qubits, p)
+        overall_mutual_info.append(mutual_information_change_all_parameters(n_qubits, n_layers, n_a, measurements))
+
+    return np.mean(overall_mutual_info, axis=0), np.std(overall_mutual_info, axis = 0) / np.sqrt(n_a)

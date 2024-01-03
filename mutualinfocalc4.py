@@ -1,7 +1,7 @@
 
 from VQEMonteCarloZeroVariant import *
 """
-Run this file to collect our data for the barren plateaus optimization runs. 
+which represent our old mutual information code that calculates the mutual information over random theta, for one configuration of measurement gates, ran with the following script: 
 """
 
 if __name__ == "__main__":
