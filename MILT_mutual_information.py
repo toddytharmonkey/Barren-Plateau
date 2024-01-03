@@ -155,7 +155,7 @@ def generate_mutual_info_samples_dask_change_all_parameters_and_measurements(n_q
     # overall shape (n_p, n_a, 2, n_layers) 
     return results 
 
-def mutual_information_change_all_parameters(n_qubits,n_layers,n_a, measurements):
+def mutual_information_only_parameters(n_qubits,n_layers,n_a, measurements):
     """
     Generate mutual information samples across all parameters but only across different thetas for one measurement configuration. Uses dask. n_a is the number of thetas averaged over. 
     """
@@ -165,9 +165,12 @@ def mutual_information_change_all_parameters(n_qubits,n_layers,n_a, measurements
     p_bi = np.mean(p_i_m_given_thetas, axis=(0))
 
     # sum over every axis except for the number of layers, for both aware + unaware
-    mutual_info = - np.sum(p_i_m_given_thetas*np.log(p_bi/p_i_m_given_thetas), axis=(0,1)) / (n_a )  
+    mutual_info_mean = - np.sum(p_i_m_given_thetas*np.log(p_bi/p_i_m_given_thetas), axis=(0,1)) / (n_a )  
 
-    return mutual_info 
+    mutual_info_error = np.std(- np.sum(p_i_m_given_thetas*np.log(p_bi/p_i_m_given_thetas), axis=(1)), axis=0) / np.sqrt(n_a)
+ 
+
+    return mutual_info_mean, mutual_info_error
 
 def mutual_info_different_measurements(n_qubits, n_layers, n_a, n_p, p):
     """

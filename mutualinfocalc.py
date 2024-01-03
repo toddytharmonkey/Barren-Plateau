@@ -11,15 +11,19 @@ if __name__ == "__main__":
     n_p = 100
     n_qubits = 6 
     n_layers = 60
-    probs = [.05] 
-
-    overall_results = []
+    probs = [0] 
 
     for p in probs: 
 
-        layered_results = mutual_info_different_measurements(n_qubits,n_layers,n_a, n_p, p)
-        overall_results.append(layered_results)
-        np.save(f"{n_qubits}_{p}_layeredresults", layered_results)
+        if p == 0:
+
+            layered_results = mutual_information_only_parameters(n_qubits,n_layers,n_a, measurements=None)
+            np.save(f"{n_qubits}_{p}_layeredresults", layered_results)
+
+        else: 
+
+            layered_results = mutual_info_different_measurements(n_qubits,n_layers,n_a, n_p, p)
+            np.save(f"{n_qubits}_{p}_layeredresults", layered_results)
 
     client.close()
 
