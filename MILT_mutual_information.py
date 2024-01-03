@@ -183,4 +183,4 @@ def mutual_info_different_measurements(n_qubits, n_layers, n_a, n_p, p):
     # sum over n_a and pos/neg outcome 
     mutual_info_measurement_groups = - np.sum(p_i_m_given_thetas*np.log(p_bi/p_i_m_given_thetas), axis=(1,2)) / (n_a ) 
 
-    return np.mean(mutual_info_measurement_groups, axis=0), np.std(mutual_info_measurement_groups, axis = 0) / np.sqrt(n_a)
+    return np.mean(mutual_info_measurement_groups, axis=0), np.std(mutual_info_measurement_groups, axis = 0) / np.sqrt(n_p)
