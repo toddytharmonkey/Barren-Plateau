@@ -157,10 +157,8 @@ def generate_mutual_info_samples_dask_change_all_parameters_and_measurements(n_q
 
 def mutual_information_change_all_parameters(n_qubits,n_layers,n_a, measurements):
     """
-    Generate mutual information samples across all parameters but only across different thetas for one measurement configuration.   
+    Generate mutual information samples across all parameters but only across different thetas for one measurement configuration. Uses dask. n_a is the number of thetas averaged over. 
     """
-
-    #uses dask 
 
     p_i_m_given_thetas = generate_mutual_info_samples_dask_change_all_parameters(n_qubits, n_layers, n_a, measurements)
 
@@ -172,12 +170,17 @@ def mutual_information_change_all_parameters(n_qubits,n_layers,n_a, measurements
     return mutual_info 
 
 def mutual_info_different_measurements(n_qubits, n_layers, n_a, n_p, p):
+    """
+    For every layer, generate the mutual information, averaging over different thetas for different measurement configurations at probability p. n_a is the number of thetas averaged over and n_p is the number of measurements averaged over.   
+    """
 
+    # generate samples in shape (n_p, n_a, 2, n_layers )
     p_i_m_given_thetas = generate_mutual_info_samples_dask_change_all_parameters_and_measurements(n_qubits, n_layers, n_a, n_p, p)
 
+    #average over n_a 
     p_bi = np.mean(p_i_m_given_thetas, axis=(1))
 
-    # sum over every axis except for the number of layers, for both aware + unaware
+    # sum over n_a and pos/neg outcome 
     mutual_info_measurement_groups = - np.sum(p_i_m_given_thetas*np.log(p_bi/p_i_m_given_thetas), axis=(1,2)) / (n_a ) 
 
     return np.mean(mutual_info_measurement_groups, axis=0), np.std(mutual_info_measurement_groups, axis = 0) / np.sqrt(n_a)
