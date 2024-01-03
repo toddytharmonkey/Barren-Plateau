@@ -1,4 +1,5 @@
 from MILT_core import * 
+import dask
 
 def probability_to_measure_one_given_parameters(n_qubits, n_layers, parameters, measurements):
 
@@ -135,7 +136,29 @@ def generate_mutual_info_samples_dask_change_all_parameters(n_qubits, n_layers, 
     # overall shape (n_a, 2, n_layers) 
     return results 
 
+def generate_mutual_info_samples_dask_change_all_parameters_and_measurements(n_qubits, n_layers, n_a, n_p, p): 
+
+    rng = np.random.default_rng()
+    #generate list of random theta_a
+    samples = []
+
+    for _ in range(n_p): # loop over different measurement configurations 
+        measurements = random_measurements_prob(n_layers, n_qubits, p)
+        for _ in range(n_a):
+            parameters = random_parameters(num_parameters(n_qubits, n_layers, "HEA2")) 
+            # appending a tuple (2, n_layers) to samples 
+            samples.append(probability_to_measure_one_given_parameters_delayed(n_qubits, n_layers, parameters, measurements))
+
+    results = dask.compute(*samples)
+    results = np.reshape(results, (n_p, n_a, 2, n_layers))
+
+    # overall shape (n_p, n_a, 2, n_layers) 
+    return results 
+
 def mutual_information_change_all_parameters(n_qubits,n_layers,n_a, measurements):
+    """
+    Generate mutual information samples across all parameters but only across different thetas for one measurement configuration.   
+    """
 
     #uses dask 
 
@@ -148,13 +171,13 @@ def mutual_information_change_all_parameters(n_qubits,n_layers,n_a, measurements
 
     return mutual_info 
 
-def mutual_info_different_measurements(n_qubits, n_layers, n_a, p):
+def mutual_info_different_measurements(n_qubits, n_layers, n_a, n_p, p):
 
-    overall_mutual_info = []
+    p_i_m_given_thetas = generate_mutual_info_samples_dask_change_all_parameters_and_measurements(n_qubits, n_layers, n_a, n_p, p)
 
-    for _ in range(n_a):
+    p_bi = np.mean(p_i_m_given_thetas, axis=(1))
 
-        measurements = random_measurements_prob(n_layers, n_qubits, p)
-        overall_mutual_info.append(mutual_information_change_all_parameters(n_qubits, n_layers, n_a, measurements))
+    # sum over every axis except for the number of layers, for both aware + unaware
+    mutual_info_measurement_groups = - np.sum(p_i_m_given_thetas*np.log(p_bi/p_i_m_given_thetas), axis=(1,2)) / (n_a ) 
 
-    return np.mean(overall_mutual_info, axis=0), np.std(overall_mutual_info, axis = 0) / np.sqrt(n_a)
+    return np.mean(mutual_info_measurement_groups, axis=0), np.std(mutual_info_measurement_groups, axis = 0) / np.sqrt(n_a)

@@ -5,7 +5,7 @@ from dask.diagnostics import ProgressBar
 from dask import delayed, compute
 import matplotlib.pyplot as plt
 from scipy.stats import bootstrap
-from tqdm import tqdm  
+from tqdm import tqdm  # assuming my code is going to be run in notebook
 from collections import namedtuple
 import torch
 import random
@@ -30,19 +30,6 @@ ham_1_1_05 = of.get_sparse_operator(of.QubitOperator(
 ham_1_1_05 = torch.reshape(torch.tensor(ham_1_1_05, dtype=torch.complex64),
                            tuple([2 for i in range(int(np.log2(ham_1_1_05.size)))]))
 
-
-def create_zz_operator(n):
-    operator = of.QubitOperator()
-    for i in range(n):
-        for j in range(i+1, n):
-            operator += of.QubitOperator(f'Z{i} Z{j}')
-
-    operator = of.get_sparse_operator(operator)
-
-    operator = torch.reshape(torch.tensor(operator,dtype=torch.complex64),tuple([2 for i in range(int(np.log2(ham_1_1_05.size)))]))
-
-    return operator
-
 """
 Generate gradient variance shots using 3 possible methods for different ansatz.
 
@@ -62,7 +49,12 @@ def ApplyGate(U, qubits, psi):
     indices += ''.join([chr(97+i-32*qubits.count(i))
                        for i in range(len(psi.shape))])
 
+#     print("U", U)
+#     print("qubits", qubits)
+#     print("indices",indices)
+
     return torch.einsum(indices, U, psi)
+
 
 def Inner(psi_1, psi_2):
     '''<psi_1|psi_2>'''
@@ -71,11 +63,13 @@ def Inner(psi_1, psi_2):
     indices += ''.join([chr(97+q) for q in range(len(psi_2.shape))])
     return torch.einsum(indices, psi_1.conj(), psi_2)
 
+
 def Basis(n):
     '''Returns the computational basis states for n qubits'''
     def i2binarray(i):
         return [int(c) for c in bin(i)[2:].zfill(n)]
     return [i2binarray(i) for i in range(2**n)]
+
 
 def initial_state(n_qubits):
     '''Initializes the qubits on the computational basis'''
@@ -84,6 +78,7 @@ def initial_state(n_qubits):
     for i in range(n_qubits-1):
         psi = torch.kron(psi, zero)
     return psi.reshape((2,)*n_qubits)
+
 
 # Gate Definitons--------------------------------------------------------------
 
@@ -293,27 +288,61 @@ def random_measurements_num(n_layers, n_qubits, size):
         return measure_list
 
 
-def layer_measure(psi_list, p, gradient_technique, post_selected, measurements, layer, specific_measurement, measurement_index):
+def layer_measure(psi_list, p, gradient_technique, post_selected, measurements, layer):
     if measurements is not None:
         measurements = np.array(measurements)
         relevant_qubits = measurements[np.where(
             measurements[:, 0] == layer)][:, 1:]
         if len(relevant_qubits):
-            return apply_measure(psi_list, relevant_qubits.tolist(),
-                          p, gradient_technique, post_selected, specific_measurement, measurement_index)
+            apply_measure(psi_list, relevant_qubits.tolist(),
+                          p, gradient_technique, post_selected)
+            
+def even_bisect_measurements(n_layers, n_qubits, n):
+    '''generate a list of 'n' measurements, bisecting the circuit into n evenly divided pieces 
+    and ensuring nearby measurements are spaced apart on qubits.'''
+
+    total_positions = n_layers * n_qubits
+    partition_size = total_positions / n
+
+    measure_list = []
+    last_qubit_num = None
+    occupied_qubits = set()
+
+    for i in range(n):
+        # Calculate the middle of the i-th partition for layer placement
+        middle_position = (partition_size / 2) + (i * partition_size)
+        depth = int(middle_position // n_qubits)
+
+        # Decide qubit number based on the last measurement's qubit number
+        if last_qubit_num is None:  # If this is the first measurement
+            qubit_num = n_qubits // 2 if n_qubits % 2 == 0 else (n_qubits - 1) // 2
         else:
-            return []
+            middle_qubit = n_qubits // 2
+            if last_qubit_num < middle_qubit:
+                qubit_num = min(n_qubits - 2, last_qubit_num + 2)
+            else:
+                qubit_num = max(1, last_qubit_num - 2)
+        
+        # If qubit_num is already occupied for this depth, adjust its placement
+        while (depth, qubit_num) in occupied_qubits:
+            qubit_num = (qubit_num + 3) % n_qubits
+        
+        measure_list.append([depth, qubit_num])
+        occupied_qubits.add((depth, qubit_num))
+        last_qubit_num = qubit_num
+
+    return measure_list
+
+
 
 
 def apply_measure(psi_list, measurements, pM, gradient_technique,
-                  post_selected=True, specific_measurements=None, measurement_index=0):
+                  post_selected=True):
     '''project the wavefunctions onto some randomly sampled basis
     returns the unnormalized (conditional) probabiliy
     This is the most subtle part of the entire code so be careful
     We do not normalize psi at each step so the output wavefunctions are
     \tilde{\psi}'''
-
-    outcomes = []
 
     for q in measurements:
 
@@ -329,16 +358,10 @@ def apply_measure(psi_list, measurements, pM, gradient_technique,
             p0, p1 = prob_rounder(p0, i)
 
             # if not post-selected, make the outcome from the first (normal) circuit
-            if i == 0 and specific_measurements != None:
-                outcome = specific_measurements[measurement_index]
-                measurement_index = measurement_index + 1 
-            elif i == 0 and post_selected == False:
+            if i == 0 and post_selected == False:
                 outcome = np.random.choice([0, 1], 1, p=[p0, p1])[0]
             elif i == 0 and post_selected == True:
                 outcome = 0
-
-            if i == 0:
-                outcomes.append(outcome)
 
             if i == 0:
                 original_p = [p0, p1][outcome]
@@ -353,8 +376,6 @@ def apply_measure(psi_list, measurements, pM, gradient_technique,
             else:
                 psi_list[i] = ApplyGate(
                     measure(outcome), q, psi_list[i])/np.sqrt(p_i)
-                
-    return outcomes
 
 
 def gradients_by_layer(n_qubits, n_layers, parameters, gradient_technique="numeric",
@@ -362,7 +383,7 @@ def gradients_by_layer(n_qubits, n_layers, parameters, gradient_technique="numer
                        return_analytic_suite=False, post_selected=False,
                        entropy_regions=[[]], periodic=False,
                        get_layered_results=False, ham_type="z0z1",
-                       ansatz="GG", rotations=None,specific_measurement= None):
+                       ansatz="GG", rotations=None,):
     """
     Given chosen circuit parameters and a method to generate the gradient, constructs
     appropriate psi's and uses them to return unaware, aware gradients or more
@@ -390,7 +411,7 @@ def gradients_by_layer(n_qubits, n_layers, parameters, gradient_technique="numer
                                      gradient_index, measurements, dtheta,
                                      return_analytic_suite, post_selected,
                                      entropy_regions, periodic,
-                                     get_layered_results, ham_type,specific_measurement)
+                                     get_layered_results, ham_type,)
 
     if ansatz == "HEA2_uber_parameters":
 
@@ -672,11 +693,9 @@ def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
                           gradient_index=0, measurements=None, dtheta=.00001,
                           return_analytic_suite=False, post_selected=False,
                           entropy_regions=[[]], periodic=False,
-                          get_layered_results=False, ham_type="z0z1",specific_measurement=None):
+                          get_layered_results=False, ham_type="z0z1",):
 
     layer_results = []
-    outcomes = []
-    outcome_index = 0 
 
     if gradient_technique == "shift":
         # create nonshifted, -, + versions of psi , for each individually shifted psi
@@ -695,8 +714,6 @@ def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
 
     p = [1.0 for _ in psi_list]  # probability for each psi
     current_param = 0  # start with parameter 0
-
-    p_by_layer = []
 
     for l in range(n_layers):
         # 1: paramaterized Ry rotation gates on all qubits
@@ -723,20 +740,15 @@ def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
                 ham_type, periodic))
 
         # If measurements are provided apply them
-        measurement_outcome = layer_measure(psi_list, p, gradient_technique,
-                      post_selected, measurements, l, specific_measurement, outcome_index)
-        if measurement_outcome != None:
-            outcomes.extend(measurement_outcome)
-            #print(measurement_outcome)
-            outcome_index = outcome_index + len(measurement_outcome)
-        p_by_layer.append(p[0])
+        layer_measure(psi_list, p, gradient_technique,
+                      post_selected, measurements, l)
         
     if get_layered_results:
-        return layer_results, outcomes,p_by_layer
+        return layer_results
     else:
         return gradients_HEA(n_qubits, psi_list, gradient_technique, p,
                              dtheta, return_analytic_suite, entropy_regions,
-                             ham_type, periodic), outcomes
+                             ham_type, periodic)
 
 
 def layer_H(n_qubits, psi_list, qubit_range):

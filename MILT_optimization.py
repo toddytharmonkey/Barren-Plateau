@@ -174,7 +174,7 @@ def schedule(Niter, schedule):
         raise NotImplementedError
 
 # Wrapping the gradients_by_layer function with Dask's delayed for lazy evaluation
-@ delayed
+@dask. delayed
 def delayed_gradients_by_layer(n_qubits, n_layers, parameters, gradient_technique="numeric",
                                gradient_index=0, measurements=None, dtheta=.00001,
                                return_analytic_suite=False, post_selected=False,
