@@ -1,4 +1,5 @@
 from VQEMonteCarlo import *
+
 """
 Run this file to collect our data for the barren plateaus optimization runs.
 """
@@ -8,15 +9,18 @@ if __name__ == "__main__":
 
     ansatz = "HEA2"
     n_qubits = 8
-    probability = .1
-    n_shots = 1 #change this line
-    post_selected = True #change this line
-    parallel=False
+    probability = 0.1
+    n_shots = 1  # change this line
+    post_selected = True  # change this line
+    parallel = False
     gradient = "aware"
     n_layers = 16
-    
+
     if not os.path.exists("thetas.npy"):
-        thetas = [random_parameters(num_parameters(n_qubits, n_layers, ansatz)) for _ in range(10)]
+        thetas = [
+            random_parameters(num_parameters(n_qubits, n_layers, ansatz))
+            for _ in range(10)
+        ]
         print("thetas", thetas)
         np.save("thetas", thetas)
     else:
@@ -30,4 +34,16 @@ if __name__ == "__main__":
 
     dir_name = f"landscapeplot_pointtwo"
 
-    multiple_optimization_runs(ansatz, n_qubits, n_layers, measurements, n_shots, post_selected, dir_name, parallel, ham_type, gradient, [thetas[0]])
+    multiple_optimization_runs(
+        ansatz,
+        n_qubits,
+        n_layers,
+        measurements,
+        n_shots,
+        post_selected,
+        dir_name,
+        parallel,
+        ham_type,
+        gradient,
+        [thetas[0]],
+    )

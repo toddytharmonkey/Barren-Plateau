@@ -1,18 +1,20 @@
 import os
-from VQEMonteCarlo import * 
+from VQEMonteCarlo import *
+
 """
 Run this file to graph all the prob_###... runs!
 """
 
 if __name__ == "__main__":
-
     from PIL import Image, ImageDraw, ImageFont
     import os
     import glob
 
     # Settings
     base_folder = "./"  # Change this to your base folder path
-    folder_pattern = "prob_*_HEA2_q8_l20_shots1_postTrue_{file_pattern}_aware_thetas10_version*"
+    folder_pattern = (
+        "prob_*_HEA2_q8_l20_shots1_postTrue_{file_pattern}_aware_thetas10_version*"
+    )
     png_name = "all_run_plot.png"
     output_name = "combined_images_{file_pattern}.png"
 
@@ -20,7 +22,9 @@ if __name__ == "__main__":
 
     for file_pattern in file_patterns:
         # Search for folders matching the pattern
-        search_pattern = os.path.join(base_folder, folder_pattern.format(file_pattern=file_pattern))
+        search_pattern = os.path.join(
+            base_folder, folder_pattern.format(file_pattern=file_pattern)
+        )
         folders = sorted(glob.glob(search_pattern))
 
         # List to store images
@@ -43,7 +47,7 @@ if __name__ == "__main__":
         total_height = max_height * 2 + 100  # 2 rows + padding for title
 
         # Create a blank canvas
-        combined_img = Image.new('RGB', (total_width, total_height), color='white')
+        combined_img = Image.new("RGB", (total_width, total_height), color="white")
         draw = ImageDraw.Draw(combined_img)
         font_size = 40
         font = ImageFont.truetype("arial.ttf", font_size)
@@ -52,15 +56,17 @@ if __name__ == "__main__":
         # Draw the title
         title = f"{file_pattern} | 20 Layers | 8 Qubits | HEA2 Ansatz"
         title_width, title_height = draw.textsize(title, font=title_font)
-        draw.text(((total_width - title_width) / 2, 20), title, font=title_font, fill='black')
+        draw.text(
+            ((total_width - title_width) / 2, 20), title, font=title_font, fill="black"
+        )
 
         # Paste each image on the canvas and annotate with label
         x_offset, y_offset = 0, 120  # Start pasting images below the title
         for idx, img in enumerate(images):
             combined_img.paste(img, (x_offset, y_offset))
             label = f"probability {idx * 0.1:.1f}"
-            draw.text((x_offset + 10, y_offset + 10), label, font=font, fill='black')
-            
+            draw.text((x_offset + 10, y_offset + 10), label, font=font, fill="black")
+
             x_offset += img.width
             if (idx + 1) % 5 == 0:  # Move to next row after 5 images
                 x_offset = 0
@@ -69,4 +75,6 @@ if __name__ == "__main__":
         # Save the combined image
         combined_img.save(output_name.format(file_pattern=file_pattern))
 
-        print(f"Combined image for {file_pattern} saved as {output_name.format(file_pattern=file_pattern)}")
+        print(
+            f"Combined image for {file_pattern} saved as {output_name.format(file_pattern=file_pattern)}"
+        )
