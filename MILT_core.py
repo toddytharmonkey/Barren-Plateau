@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import bootstrap
 from tqdm import tqdm  # assuming my code is going to be run in notebook
 from collections import namedtuple
-import torch
+import numpy as np
 import random
 import os
 import numpy as np
@@ -16,18 +16,18 @@ import quspin
 
 code_version = "1.2"
 
-# device = torch.device("cuda" if torch.cuda.is_available() else
+# device = np.device("cuda" if np.cuda.is_available() else
 #                       SystemError("Cuda was not chosen"))
-device = torch.device("cpu")
+device = np.device("cpu")
 
 ham_1_1_4 = of.get_sparse_operator(of.QubitOperator(
     'X0 X1', 1)+of.QubitOperator('Y0 Y1', 1)+of.QubitOperator('Z0 Z1', 4)).toarray()
-ham_1_1_4 = torch.reshape(torch.tensor(ham_1_1_4, dtype=torch.complex64),
+ham_1_1_4 = np.reshape(np.array(ham_1_1_4, dtype=np.complex64),
                           tuple([2 for i in range(int(np.log2(ham_1_1_4 .size)))]))
 
 ham_1_1_05 = of.get_sparse_operator(of.QubitOperator(
     'X0 X1', 1)+of.QubitOperator('Y0 Y1', 1)+of.QubitOperator('Z0 Z1', .5)).toarray()
-ham_1_1_05 = torch.reshape(torch.tensor(ham_1_1_05, dtype=torch.complex64),
+ham_1_1_05 = np.reshape(np.array(ham_1_1_05, dtype=np.complex64),
                            tuple([2 for i in range(int(np.log2(ham_1_1_05.size)))]))
 
 """
@@ -53,7 +53,7 @@ def ApplyGate(U, qubits, psi):
 #     print("qubits", qubits)
 #     print("indices",indices)
 
-    return torch.einsum(indices, U, psi)
+    return np.einsum(indices, U, psi)
 
 
 def Inner(psi_1, psi_2):
@@ -61,7 +61,7 @@ def Inner(psi_1, psi_2):
     indices = ''.join([chr(97+q) for q in range(len(psi_1.shape))])
     indices += ','
     indices += ''.join([chr(97+q) for q in range(len(psi_2.shape))])
-    return torch.einsum(indices, psi_1.conj(), psi_2)
+    return np.einsum(indices, psi_1.conj(), psi_2)
 
 
 def Basis(n):
@@ -73,10 +73,10 @@ def Basis(n):
 
 def initial_state(n_qubits):
     '''Initializes the qubits on the computational basis'''
-    zero = torch.tensor([1, 0], dtype=torch.complex64, device=device)
-    psi = torch.tensor([1, 0], dtype=torch.complex64, device=device)
+    zero = np.array([1, 0], dtype=np.complex64, device=device)
+    psi = np.array([1, 0], dtype=np.complex64, device=device)
     for i in range(n_qubits-1):
-        psi = torch.kron(psi, zero)
+        psi = np.kron(psi, zero)
     return psi.reshape((2,)*n_qubits)
 
 
@@ -85,33 +85,33 @@ def initial_state(n_qubits):
 def pauli(i):
     '''Pauli matrix. i = 0 for I, 1 for X, 2 for Y, 3 for Z'''
     if i == 0:
-        return torch.eye(2)
+        return np.eye(2)
     elif i == 1:
-        return torch.tensor([[0, 1], [1, 0]], dtype=torch.complex64, device=device)
+        return np.array([[0, 1], [1, 0]], dtype=np.complex64, device=device)
     elif i == 2:
-        return torch.tensor([[0, -1j], [1j, 0]], dtype=torch.complex64, device=device)
+        return np.array([[0, -1j], [1j, 0]], dtype=np.complex64, device=device)
     elif i == 3:
-        return torch.tensor([[1, 0], [0, -1]], dtype=torch.complex64, device=device)
+        return np.array([[1, 0], [0, -1]], dtype=np.complex64, device=device)
     else:
         return ValueError("i=0,1,2,3 only")
 
 
-CNOT = torch.reshape(torch.tensor([[1, 0, 0, 0], [0, 1, 0, 0], [
-    0, 0, 0, 1], [0, 0, 1, 0]], dtype=torch.complex64, device=device), (2, 2, 2, 2))
+CNOT = np.reshape(np.array([[1, 0, 0, 0], [0, 1, 0, 0], [
+    0, 0, 0, 1], [0, 0, 1, 0]], dtype=np.complex64, device=device), (2, 2, 2, 2))
 
-H = 1/np.sqrt(2)*torch.tensor([[1, 1], [1, -1]],
-                              dtype=torch.complex64, device=device)
+H = 1/np.sqrt(2)*np.array([[1, 1], [1, -1]],
+                              dtype=np.complex64, device=device)
 
-zz = torch.kron(pauli(3), pauli(3))
-xx = torch.kron(pauli(1), pauli(1))
-yy = torch.kron(pauli(2), pauli(2))
+zz = np.kron(pauli(3), pauli(3))
+xx = np.kron(pauli(1), pauli(1))
+yy = np.kron(pauli(2), pauli(2))
 
 
 def paulipauli(i):
     '''Pauli matrix. i = 0 for I, 1 for XX, 2 for YY, 3 for ZZ'''
 
     if i == 0:
-        return torch.kron(torch.eye(2), torch.eye(2)).reshape(2, 2, 2, 2)
+        return np.kron(np.eye(2), np.eye(2)).reshape(2, 2, 2, 2)
     elif i == 1:
         return xx
     elif i == 2:
@@ -125,29 +125,29 @@ def paulipauli(i):
 def rot(theta, i, grad=0):
     '''Rotation gate. i = 1 for x, 2 for y, 3 for z'''
     if not grad:
-        return np.cos(theta/2)*torch.eye(2, dtype=torch.complex64,
+        return np.cos(theta/2)*np.eye(2, dtype=np.complex64,
                                          device=device) - 1j*np.sin(theta/2)*pauli(i)
     else:
-        return -.5*np.sin(theta/2)*torch.eye(2, dtype=torch.complex64,
+        return -.5*np.sin(theta/2)*np.eye(2, dtype=np.complex64,
                                              device=device) - .5j*np.cos(theta/2)*pauli(i)
 
 
 def rotrot(theta, i, grad=0):
     '''Rotation gate. i = 1 for x, 2 for y, 3 for z'''
     if not grad:
-        return (np.cos(theta/2)*torch.eye(4, dtype=torch.complex64,
+        return (np.cos(theta/2)*np.eye(4, dtype=np.complex64,
                                           device=device) - 1j*np.sin(theta/2)*paulipauli(i)).reshape(2, 2, 2, 2)
     else:
-        return (-.5*np.sin(theta/2)*torch.eye(4, dtype=torch.complex64,
+        return (-.5*np.sin(theta/2)*np.eye(4, dtype=np.complex64,
                                               device=device) - .5j*np.cos(theta/2)*paulipauli(i)).reshape(2, 2, 2, 2)
 
 
 def measure(i):
     '''measurement operator on 0 or 1'''
     if i == 0:
-        return torch.tensor([[1., 0], [0, 0]], dtype=torch.complex64, device=device)
+        return np.array([[1., 0], [0, 0]], dtype=np.complex64, device=device)
     elif i == 1:
-        return torch.tensor([[0, 0], [0, 1.]], dtype=torch.complex64, device=device)
+        return np.array([[0, 0], [0, 1.]], dtype=np.complex64, device=device)
     else:
         return ValueError("can measure 0 or 1 only")
 
@@ -352,7 +352,7 @@ def apply_measure(psi_list, measurements, pM, gradient_technique,
 
         for i in range(len(psi_list)):
 
-            p0 = torch.abs(
+            p0 = np.abs(
                 Inner(ApplyGate(measure(0), q, psi_list[i]), psi_list[i])).to("cpu").numpy()
 
             p0, p1 = prob_rounder(p0, i)
@@ -697,9 +697,11 @@ def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
 
     layer_results = []
 
-    if gradient_technique == "shift":
+    if gradient_technique == None:
+        psi_list = [initial_state(n_qubits)]
+    elif gradient_technique == "shift":
         # create nonshifted, -, + versions of psi , for each individually shifted psi
-        psi_list = torch.stack([initial_state(n_qubits)
+        psi_list = np.stack([initial_state(n_qubits)
                                for _ in range(3*n_qubits)])
     elif gradient_technique == "analytic":
         # normal and derivative circuits
@@ -717,9 +719,6 @@ def HEA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
 
     for l in range(n_layers):
         # 1: paramaterized Ry rotation gates on all qubits
-
-        # print("New Layer")
-        # print(psi_list)
 
         layer_rot(n_qubits, psi_list, parameters, 2, current_param,
                   gradient_technique, gradient_index, dtheta)
@@ -790,7 +789,7 @@ def gradients_HEA(n_qubits, psi_list, gradient_technique, p, dtheta,
         aware_gradient = 0
         unaware_gradient = 0
 
-        grouped_psi_list = torch.reshape(psi_list, tuple(
+        grouped_psi_list = np.reshape(psi_list, tuple(
             [n_qubits, 3, *[2 for _ in range(n_qubits)]]))
 
         grouped_p = np.reshape(p, (n_qubits, 3))
@@ -813,6 +812,9 @@ def gradients_HEA(n_qubits, psi_list, gradient_technique, p, dtheta,
 
     else:  # analytical gradient
 
+        # NOTE: right now code is in a mode just to calculate cost functions without caring about the gradients.
+        # this part definetly needs to be fixed if you actually want to uise gradients
+
         C = Inner(psi, cost_psi).real
         return C
 
@@ -834,7 +836,10 @@ def gradients_HEA(n_qubits, psi_list, gradient_technique, p, dtheta,
 def layer_rot(n_qubits, psi_list, parameters, rotation, current_param,
               gradient_technique, gradient_index, dtheta,):
 
-    if gradient_technique == "shift":
+    if gradient_technique is None: 
+        layer_rot_none(n_qubits, psi_list, parameters,
+                        rotation, current_param)
+    elif gradient_technique == "shift":
         layer_rot_shift(n_qubits, psi_list, parameters,
                         rotation, current_param, gradient_index)
     elif gradient_technique == "analytic":
@@ -844,13 +849,18 @@ def layer_rot(n_qubits, psi_list, parameters, rotation, current_param,
         layer_rot_numeric(n_qubits, psi_list, parameters,
                           rotation, current_param, gradient_index, dtheta)
 
+def layer_rot_none(n_qubits, psi_list, parameters,
+                        rotation, current_param):
+    for i in range(len(psi_list)):
+        psi_list[i] = rotation_layer(
+            n_qubits, psi_list[i], parameters[current_param], rotation)
 
 def layer_rot_shift(n_qubits, psi_list, parameters, rotation, current_param, gradient_index):
 
     p = (0, np.pi/2, -np.pi/2)
 
     # group the psis into n_qubit groups of threes to account for the product rule
-    grouped_psi_list = torch.reshape(psi_list, tuple(
+    grouped_psi_list = np.reshape(psi_list, tuple(
         [n_qubits, 3, *[2 for _ in range(n_qubits)]]))
 
     # for every kth psi whose derivative is taken in the kth row:
@@ -879,7 +889,7 @@ def row_with_one_gradient(n_qubits, psi, parameter, rotation, gradient_qubit):
 def product_rule_psi(n_qubits, psi, parameter, rotation):
 
     original_psi = psi.clone()
-    psi_result = torch.zeros(psi.shape, device=device)
+    psi_result = np.zeros(psi.shape, device=device)
     for q in range(n_qubits):
         gradient_psi_term = row_with_one_gradient(
             n_qubits, original_psi, parameter, rotation, q)
@@ -946,7 +956,7 @@ def HVA_gradient_by_layer(n_qubits, n_layers, parameters, gradient_technique="nu
 
     if gradient_technique == "shift":
         # create nonshifted, -, + versions of psi , for each individually shifted psi
-        psi_list = torch.stack([initial_state(n_qubits)
+        psi_list = np.stack([initial_state(n_qubits)
                                for _ in range(3*n_qubits)])
     elif gradient_technique == "analytic":
         # normal and derivative circuits
@@ -1120,12 +1130,12 @@ def layer_paulixpauli_analytical(n_qubits, psi_list, parameters,
 
 def layer_paulipauli_derivative_zz(n_qubits, psi, theta, odd, pbc=True):
 
-    M = torch.mul(-1j*theta/2, zz)
-    U = torch.matrix_exp(M).reshape(2, 2, 2, 2)
-    d_U = torch.mul(torch.mul(-1j/2, zz),
-                    torch.matrix_exp(M)).reshape(2, 2, 2, 2)
+    M = np.mul(-1j*theta/2, zz)
+    U = np.matrix_exp(M).reshape(2, 2, 2, 2)
+    d_U = np.mul(np.mul(-1j/2, zz),
+                    np.matrix_exp(M)).reshape(2, 2, 2, 2)
 
-    psi_result = torch.zeros(psi.shape, device=device)
+    psi_result = np.zeros(psi.shape, device=device)
 
     for del_q in range(odd, n_qubits-1, 2):
 
@@ -1175,7 +1185,7 @@ def layer_paulipauli_derivative_yyxx(n_qubits, psi, theta, odd, pbc=False):
     UXX = rotrot(theta, 1, False)
     d_UXX = rotrot(theta, 1, True)
 
-    psi_result = torch.zeros(psi.shape, device=device)
+    psi_result = np.zeros(psi.shape, device=device)
 
     # index over all the gates with the same parameter
     for derivative_UXX_gate in range(2):
@@ -1283,15 +1293,15 @@ def layer_x_rot_HVA(n_qubits, psi_list, param):
 
 def layer_paulipauli(n_qubits, psi, theta, odd, pauli, pbc=False):
     if pauli == 'xx':
-        M = torch.mul(-1j*theta/2, xx)
+        M = np.mul(-1j*theta/2, xx)
     elif pauli == 'yy':
-        M = torch.mul(-1j*theta/2, yy)
+        M = np.mul(-1j*theta/2, yy)
     elif pauli == 'zz':
-        M = torch.mul(-1j*theta/2, zz)
+        M = np.mul(-1j*theta/2, zz)
     else:
         raise ValueError("double pauli gate pauli is invalid")
 
-    U = torch.matrix_exp(M).reshape(2, 2, 2, 2)
+    U = np.matrix_exp(M).reshape(2, 2, 2, 2)
 
     for q in range(n_qubits-1):
         if q % 2 == odd:
