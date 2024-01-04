@@ -7,11 +7,13 @@ This version of the code calculates mutual info, first averaged over n_a thetas,
 if __name__ == "__main__":
     client = Client()
 
+    print("Dask Dashboard URL:", client.dashboard_link)
+
     n_a = 100
     n_p = 100
     n_qubits = 6
     n_layers = 60
-    probs = [0]
+    probs = [.1]
 
     for p in probs:
         if p == 0:

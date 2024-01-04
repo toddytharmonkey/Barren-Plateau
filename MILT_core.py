@@ -375,8 +375,6 @@ def apply_measure(psi_list, measurements, pM, gradient_technique, post_selected=
         for i in range(len(psi_list)):
             p0 = (
                 np.abs(Inner(ApplyGate(measure(0), q, psi_list[i]), psi_list[i]))
-                .to("cpu")
-                .numpy()
             )
 
             p0, p1 = prob_rounder(p0, i)
