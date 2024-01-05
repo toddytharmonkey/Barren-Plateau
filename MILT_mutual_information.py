@@ -194,7 +194,6 @@ def generate_mutual_info_samples_dask_change_all_parameters(
 def generate_mutual_info_samples_dask_change_all_parameters_and_measurements(
     n_qubits, n_layers, n_a, n_p, p
 ):
-    rng = np.random.default_rng()
     # generate list of random theta_a
     samples = []
 
@@ -213,6 +212,31 @@ def generate_mutual_info_samples_dask_change_all_parameters_and_measurements(
     results = np.reshape(results, (n_p, n_a, 2, n_layers))
 
     # overall shape (n_p, n_a, 2, n_layers)
+    return results
+
+def generate_mutual_info_change_p_and_m_at_same_time(
+    n_qubits, n_layers, n_ap
+):
+    """
+    Generate mutual information by varying both measurement gate locations and theta at the same time.  
+    """
+    # generate list of random theta_a
+    samples = []
+
+    for _ in range(n_ap):  # loop over different measurement configurations
+        measurements = random_measurements_prob(n_layers, n_qubits, p)
+        parameters = random_parameters(num_parameters(n_qubits, n_layers, "HEA2"))
+            # appending a tuple (2, n_layers) to samples
+            samples.append(
+                probability_to_measure_one_given_parameters_delayed(
+                    n_qubits, n_layers, parameters, measurements
+                )
+            )
+
+    results = dask.compute(*samples)
+    results = np.reshape(results, (n_ap, 2, n_layers))
+
+    # overall shape (n_ap, 2, n_layers)
     return results
 
 

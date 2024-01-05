@@ -10,12 +10,12 @@ if __name__ == "__main__":
     print("Dask Dashboard URL:", client.dashboard_link)
 
     n_a = 100
-    n_p = 100
-    qubit_list = [4,8,10,12,14,16]
+    n_p = 1000
+    qubit_list = [12,14,16]
     n_layers = 60
-    probs = [.1]
+    probs = [.05,.1,.2]
 
-    for n_qubits in qubit_list: 
+    for n_qubits in qubit_list:
         for p in probs:
             if p == 0:
                 layered_results = mutual_information_only_parameters(
