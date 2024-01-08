@@ -215,7 +215,7 @@ def generate_mutual_info_samples_dask_change_all_parameters_and_measurements(
     return results
 
 def generate_mutual_info_change_p_and_m_at_same_time(
-    n_qubits, n_layers, n_ap
+    n_qubits, n_layers, n_ap, p 
 ):
     """
     Generate mutual information by varying both measurement gate locations and theta at the same time.  
