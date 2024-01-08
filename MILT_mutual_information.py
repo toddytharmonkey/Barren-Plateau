@@ -287,3 +287,17 @@ def mutual_info_different_measurements(n_qubits, n_layers, n_a, n_p, p):
     return np.mean(mutual_info_measurement_groups, axis=0), np.std(
         mutual_info_measurement_groups, axis=0
     ) / np.sqrt(n_p)
+
+def mutual_info_changeall(p_i_m_given_thetas):
+    """
+    Given n_{ap} p_i_m_given_thetas samples, calculate the average mutual entropy
+    """
+
+    # samples are in shape (n_ap, 2, n_layers)
+
+    # average over n_ap
+    p_bi = np.mean(p_i_m_given_thetas, axis=(0))
+    
+    mutual_info = -np.sum(p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(1))
+
+    return np.mean(mutual_info, axis=0), np.std(mutual_info, axis=0) / np.sqrt(len(p_i_m_given_thetas))
