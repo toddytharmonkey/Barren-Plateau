@@ -226,12 +226,12 @@ def generate_mutual_info_change_p_and_m_at_same_time(
     for _ in range(n_ap):  # loop over different measurement configurations
         measurements = random_measurements_prob(n_layers, n_qubits, p)
         parameters = random_parameters(num_parameters(n_qubits, n_layers, "HEA2"))
-            # appending a tuple (2, n_layers) to samples
-            samples.append(
-                probability_to_measure_one_given_parameters_delayed(
-                    n_qubits, n_layers, parameters, measurements
-                )
+        # appending a tuple (2, n_layers) to samples
+        samples.append(
+            probability_to_measure_one_given_parameters_delayed(
+                n_qubits, n_layers, parameters, measurements
             )
+        )
 
     results = dask.compute(*samples)
     results = np.reshape(results, (n_ap, 2, n_layers))
