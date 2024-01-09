@@ -10,9 +10,9 @@ if __name__ == "__main__":
     print("Dask Dashboard URL:", client.dashboard_link)
 
     n_ap = 1000
-    qubit_list = [12,14,16]
+    qubit_list = [4,6,8,10,12,14,16]
     n_layers = 60
-    probs = [.05,.1,.2]
+    probs = [.05,.1,.2,.3,.5,.7,.9]
 
     for n_qubits in qubit_list:
         for p in probs:

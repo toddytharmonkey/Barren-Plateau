@@ -1,5 +1,6 @@
 from MILT_core import *
 import dask
+from scipy.stats import bootstrap
 
 
 def probability_to_measure_one_given_parameters(
@@ -297,7 +298,23 @@ def mutual_info_changeall(p_i_m_given_thetas):
 
     # average over n_ap
     p_bi = np.mean(p_i_m_given_thetas, axis=(0))
-    
+
     mutual_info = -np.sum(p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(1))
 
+    return mutual_info
+
+def mutual_info_standard_error(p_i_m_given_thetas):
+
+    mutual_info = mutual_info_changeall(p_i_m_given_thetas)
+
     return np.mean(mutual_info, axis=0), np.std(mutual_info, axis=0) / np.sqrt(len(p_i_m_given_thetas))
+
+def mutual_info_bootstrap(p_i_m_given_thetas):
+
+    rng = np.random.default_rng()
+
+    p_i_m_given_thetas = p_i_m_given_thetas[:,:,-1]
+
+    mutual_info = mutual_info_changeall(p_i_m_given_thetas)
+
+    return bootstrap((mutual_info,), np.mean, confidence_level=.67,random_state=rng)
