@@ -252,6 +252,8 @@ def mutual_information_only_parameters(n_qubits, n_layers, n_a, measurements):
 
     p_bi = np.mean(p_i_m_given_thetas, axis=(0))
 
+    p_bi = p_bi[np.newaxis,:]
+
     # sum over every axis except for the number of layers, for both aware + unaware
     mutual_info_mean = -np.sum(
         p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(0, 1)
@@ -280,6 +282,9 @@ def mutual_info_different_measurements(n_qubits, n_layers, n_a, n_p, p):
     # average over n_a
     p_bi = np.mean(p_i_m_given_thetas, axis=(1))
 
+    # broadcast out p_bi again 
+    p_bi = p_bi[:, np.newaxis, :, :]
+
     # sum over n_a and pos/neg outcome
     mutual_info_measurement_groups = -np.sum(
         p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(1, 2)
@@ -298,6 +303,8 @@ def mutual_info_changeall(p_i_m_given_thetas):
 
     # average over n_ap
     p_bi = np.mean(p_i_m_given_thetas, axis=(0))
+
+    p_bi = p_bi[np.newaxis,:]
 
     mutual_info = -np.sum(p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(1))
 

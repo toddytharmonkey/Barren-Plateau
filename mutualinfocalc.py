@@ -21,12 +21,12 @@ if __name__ == "__main__":
                 layered_results = mutual_information_only_parameters(
                     n_qubits, n_layers, n_a, measurements=None
                 )
-                np.save(f"{n_qubits}_{p}_layeredresults_1000_samples", layered_results)
+                np.save(f"{n_qubits}_{p}_layeredresults_samples_newaxis", layered_results)
 
             else:
                 layered_results = mutual_info_different_measurements(
                     n_qubits, n_layers, n_a, n_p, p
                 )
-                np.save(f"{n_qubits}_{p}_layeredresults_1000_samples", layered_results)
+                np.save(f"{n_qubits}_{p}_layeredresults_samples_newaxis", layered_results)
 
     client.close()
