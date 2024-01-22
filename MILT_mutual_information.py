@@ -141,10 +141,10 @@ def mutual_information_for_one_phi_vec(
 
     # sum over every axis except for the number of layers, for both aware + unaware
     mutual_info_aware = -np.sum(
-        p_i_m_given_theta * np.log(p_bi_m / p_i_m_given_theta), axis=(0, 1, 2)
+        p_i_m_given_theta * np.log2(p_bi_m / p_i_m_given_theta), axis=(0, 1, 2)
     ) / (n_a * n_c)
     mutual_info_unaware = -np.sum(
-        p_i_given_theta * np.log(p_bi / p_i_given_theta), axis=(0, 1)
+        p_i_given_theta * np.log2(p_bi / p_i_given_theta), axis=(0, 1)
     ) / (n_a * n_c)
 
     return mutual_info_aware, mutual_info_unaware
@@ -256,11 +256,11 @@ def mutual_information_only_parameters(n_qubits, n_layers, n_a, measurements):
 
     # sum over every axis except for the number of layers, for both aware + unaware
     mutual_info_mean = -np.sum(
-        p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(0, 1)
+        p_i_m_given_thetas * np.log2(p_bi / p_i_m_given_thetas), axis=(0, 1)
     ) / (n_a)
 
     mutual_info_error = np.std(
-        -np.sum(p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(1)),
+        -np.sum(p_i_m_given_thetas * np.log2(p_bi / p_i_m_given_thetas), axis=(1)),
         axis=0,
     ) / np.sqrt(n_a)
 
@@ -287,7 +287,7 @@ def mutual_info_different_measurements(n_qubits, n_layers, n_a, n_p, p):
 
     # sum over n_a and pos/neg outcome
     mutual_info_measurement_groups = -np.sum(
-        p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(1, 2)
+        p_i_m_given_thetas * np.log2(p_bi / p_i_m_given_thetas), axis=(1, 2)
     ) / (n_a)
 
     return np.mean(mutual_info_measurement_groups, axis=0), np.std(
@@ -306,7 +306,7 @@ def mutual_info_changeall(p_i_m_given_thetas):
 
     p_bi = p_bi[np.newaxis,:]
 
-    mutual_info = -np.sum(p_i_m_given_thetas * np.log(p_bi / p_i_m_given_thetas), axis=(1))
+    mutual_info = -np.sum(p_i_m_given_thetas * np.log2(p_bi / p_i_m_given_thetas), axis=(1))
 
     return mutual_info
 
