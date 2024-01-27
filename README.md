@@ -9,7 +9,7 @@ To use this codebase:
 
 1. **Clone the Repository**: 
    ```bash
-   git clone [repository URL]
+   git clone https://github.com/toddytharmonkey/Barren-Plateau.git
    ```
 2. **Install Dependencies**: 
    The required Python libraries are primarily listed at the top of `MILT_Core.py`. These include:
