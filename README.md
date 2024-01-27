@@ -37,7 +37,7 @@ The `results` folder includes scripts used for generating the data and their res
 
 - **Sonny Rappaport**: Primary developer and researcher.
 - **Gaurav Gyawali**: Priamry developer and researcher.
-- **Michael Lawler**: Provided initial code structure and much guidance.
+- **Michael Lawler**: Provided initial code structure and researcher.
 
 ## Citation
 
