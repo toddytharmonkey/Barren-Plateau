@@ -1,0 +1,3 @@
+This version of the results was created with n_a and n_p sampling (double for loop), except I made a fix where I explicitly project with np.newaxis.
+
+I've also included two files (the "1000 samples" files), although I am not sure what they were actually for. I am keeping them here for safekeeping anyways since they were generated around the same time as these other files.

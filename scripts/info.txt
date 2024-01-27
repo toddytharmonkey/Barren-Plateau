@@ -1,0 +1,3 @@
+This folder exists essentially to hold old scripts that I made before I developed my current organization system, i.e, contain the results with the scripts that generated them.
+
+As I still go back and use snippets of scripts they're still useful to keep around, even if a little disorganized. 
