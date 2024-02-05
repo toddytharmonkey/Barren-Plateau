@@ -1,5 +1,8 @@
 import numpy as np 
 import matplotlib.pyplot as plt
+import sys
+import distinctipy
+sys.path.insert(0, '../..')
 from MILT_mutual_information import *
 
 
@@ -11,8 +14,7 @@ if __name__ == "__main__":
     n_ap = 1000
     qubits = [4,6,8,10,12,14]
     n_layers = 60
-    probs = [.05,.1,.2,.3,.5,.7,.9]
-
+    probs = [.05,.1,.2,.3,.5]
 
     for i, n_qubits in enumerate(qubits):
 
