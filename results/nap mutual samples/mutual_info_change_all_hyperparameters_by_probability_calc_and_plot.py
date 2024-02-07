@@ -12,32 +12,40 @@ This version of the code calculates and plots mutual info from samples.
 
 if __name__ == "__main__":
     n_ap = 1000
-    qubits = [4,6,8,10,12,14]
+    qubits = [4,6,8,10,12,14,16]
     n_layers = 60
-    probs = [.05,.1,.2,.3,.5]
+    probs = [0,.05,.1,.2,.3,.5,.7,.9]
 
-    for i, n_qubits in enumerate(qubits):
+    for examined_layer in [4,-1]:
 
-        results_for_each_p = []
-        er_each_p = []
+        for i, n_qubits in enumerate(qubits):
 
-        for j, p in enumerate(probs):
+            results_for_each_p = []
+            er_each_p = []
 
-            if n_qubits == 12 or n_qubits == 14:
-                p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth_1000.npy")
-            else:
-                p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth.npy")
+            for j, p in enumerate(probs):
+                # Load your data based on n_qubits and p
+                if p == 0:
+                    mean, error = np.load(f"{n_qubits}_{p}_layeredresults.npy")
+                elif n_qubits == 12 or n_qubits == 14:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth_1000.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+                else:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
 
+                results_for_each_p.append(mean[examined_layer])
+                er_each_p.append(error[examined_layer])
 
-            mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+            print(len(probs))
+            print(len(results_for_each_p))
 
-            results_for_each_p.append(mean[-1])
-            er_each_p.append(error[-1])
+            plt.errorbar(x=probs, y=results_for_each_p, yerr = er_each_p, label = f"{n_qubits}", marker='.')
 
-        plt.errorbar(x=probs, y=results_for_each_p, yerr = er_each_p, label = f"{n_qubits}", marker='.')
-
-    plt.xlabel("Probability")
-    plt.ylabel("Mutual information")
-    plt.legend()
-    plt.yscale('log') 
-    plt.show()
+        plt.xlabel("Probability")
+        plt.ylabel("Mutual information")
+        plt.legend(title="number of qubits")
+        plt.yscale('log') 
+        plt.title(f'Mutual info vs probability at {examined_layer} layers')
+        plt.savefig(f"probability_at_layer_{examined_layer}.png")
+        plt.clf()

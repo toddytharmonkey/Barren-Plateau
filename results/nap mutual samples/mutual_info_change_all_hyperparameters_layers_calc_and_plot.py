@@ -12,9 +12,9 @@ This version of the code calculates and plots mutual info from samples.
 
 if __name__ == "__main__":
     n_ap = 1000
-    qubits = [4,6,8,10,12,14]
+    qubits = [4,6,8,10,12,14,16]
     n_layers = 60
-    probs = [.05,.1,.2,.3,.5]
+    probs = [0]
 
     # version #1 of the code: this does layers vs mutual info for different n_qubits 
 
@@ -33,14 +33,15 @@ if __name__ == "__main__":
     for j, p in enumerate(probs):
         for i, n_qubits in enumerate(qubits):
 
-            # Load your data based on n_qubits and p
-            if n_qubits == 12 or n_qubits == 14:
+            if p == 0:
+                mean, error = np.load(f"{n_qubits}_{p}_layeredresults.npy")
+            elif n_qubits == 12 or n_qubits == 14:
                 p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth_1000.npy")
+                mean, error = mutual_info_standard_error(p_i_m_given_thetas)
             else:
                 p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth.npy")
+                mean, error = mutual_info_standard_error(p_i_m_given_thetas)
 
-            # Assume mutual_info_standard_error is defined elsewhere
-            mean, error = mutual_info_standard_error(p_i_m_given_thetas)
 
             mean = mean[~np.isnan(error)]
             x = np.array(range(n_layers))[~np.isnan(error)]
@@ -53,6 +54,12 @@ if __name__ == "__main__":
             axs[j].errorbar(x=x, y=mean, yerr=error, label=f"{n_qubits} qubits", color=colors[i], marker='x')
 
         axs[j].set_yscale('log')
+        # Set the y-axis to show powers of 2
+        yticks = [2**(-i) for i in range(17)]
+        yticklabels = [f"{ytick:g}" for ytick in yticks]
+        axs[j].set_yticks(yticks)
+        axs[j].set_yticklabels(yticklabels)
+
         axs[j].set_xlabel("Layers")
         axs[j].set_ylabel("Log mutual information")
         axs[j].set_title(f"Mutual information for p = {p}")
