@@ -1,7 +1,7 @@
 from MILT_mutual_information import *
 
 """
-This version of the code calculates mutual info, first averaged over n_a thetas, then averaged over n_a different measurement configurations. 
+This version of the code calculates mutual info over n_ap samples, going through different thetas and measurement gate placements at the same time.  
 """
 
 if __name__ == "__main__":
