@@ -25,7 +25,16 @@ if __name__ == "__main__":
 
             for j, p in enumerate(probs):
                 # Load your data based on n_qubits and p
-                if p == 0:
+                if p in [0, .05, .1] and n_qubits in [12,14,16]:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+                elif p in [.2,.3,.5] and n_qubits == 16:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+                elif n_qubits == 10:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+                elif p == 0:
                     mean, error = np.load(f"{n_qubits}_{p}_layeredresults.npy")
                 elif n_qubits == 12 or n_qubits == 14:
                     p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth_1000.npy")
@@ -36,9 +45,6 @@ if __name__ == "__main__":
 
                 results_for_each_p.append(mean[examined_layer])
                 er_each_p.append(error[examined_layer])
-
-            print(len(probs))
-            print(len(results_for_each_p))
 
             plt.errorbar(x=probs, y=results_for_each_p, yerr = er_each_p, label = f"{n_qubits}", marker='.')
 

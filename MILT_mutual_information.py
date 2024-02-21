@@ -311,6 +311,19 @@ def mutual_info_changeall(p_i_m_given_thetas):
     return mutual_info
 
 def mutual_info_standard_error(p_i_m_given_thetas):
+    # Note that this function removes rows with np.nan. I'm assuming for now
+    # this is okay when there is only one or two rows out of 10,000 that do 
+    # this. 
+
+    # Step 1: Get a boolean p_i_m_given_thetasay where True represents NaN
+    nan_mask = np.isnan(p_i_m_given_thetas)
+
+    # Step 2: Find rows without any NaNs
+    # We use ~ to invert the mask, so it's True for non-NaN values, then check across (2,60)
+    rows_without_nan = ~nan_mask.any(axis=-1).any(axis=-1)
+
+    # Step 3: Index the original array to exclude rows with any NaNs
+    p_i_m_given_thetas = p_i_m_given_thetas[rows_without_nan]
 
     mutual_info = mutual_info_changeall(p_i_m_given_thetas)
 
@@ -320,8 +333,8 @@ def mutual_info_bootstrap(p_i_m_given_thetas):
 
     rng = np.random.default_rng()
 
-    p_i_m_given_thetas = p_i_m_given_thetas[:,:,-1]
-
     mutual_info = mutual_info_changeall(p_i_m_given_thetas)
 
-    return bootstrap((mutual_info,), np.mean, confidence_level=.67,random_state=rng)
+    bootstrap_result = bootstrap((mutual_info,), np.mean, confidence_level=.67,random_state=rng)
+
+    return np.mean(mutual_info, axis=0), bootstrap_result.confidence_interval 

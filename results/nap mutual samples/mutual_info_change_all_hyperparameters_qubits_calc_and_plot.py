@@ -31,7 +31,16 @@ if __name__ == "__main__":
 
             for i, n_qubits in enumerate(qubits):
                 # Load your data based on n_qubits and p
-                if p == 0:
+                if p in [0, .05, .1] and n_qubits in [12,14,16]:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+                elif p in [.2,.3,.5] and n_qubits == 16:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+                elif n_qubits == 10:
+                    p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                    mean, error = mutual_info_standard_error(p_i_m_given_thetas)
+                elif p == 0:
                     mean, error = np.load(f"{n_qubits}_{p}_layeredresults.npy")
                 elif n_qubits == 12 or n_qubits == 14:
                     p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_changeboth_1000.npy")

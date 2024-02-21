@@ -1,0 +1,1 @@
+Move all of these files into the "nap mutual information file". There is actually no need to have an extra folder here as it will cause my script file to diverge and get confusing.
