@@ -12,7 +12,9 @@ import random
 import os
 import numpy as np
 from dask.distributed import Client, as_completed
-import quspin
+
+# quspin is only needed to calculate renyi entropies and is annoying to install
+#import quspin
 
 code_version = "1.2"
 
