@@ -14,7 +14,7 @@ if __name__ == "__main__":
     n_ap = 1000
     qubits = [4,6,8,10,12,14,16]
     n_layers = 60
-    probs = [0,.05,.1,.2,.3,.5,.7,.9]
+    probs = [0,.01,.05,.1,.2,.3,.5,.7,.9]
 
     for i, n_qubits in enumerate(qubits):
 
@@ -26,7 +26,18 @@ if __name__ == "__main__":
 
         for j, p in enumerate(probs):
             # Load your data based on n_qubits and p
-            if p in [0, .05, .1] and n_qubits in [12,14,16]:
+            # TODO: Rename data files to make this less horrific 
+            if p in [.01] and n_qubits in [10,12,14]:
+                p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                mean, error = mutual_info_standard_error(p_i_m_given_theta)
+            elif p in [.01] and n_qubits not in [10,12,14]:
+                mean, error = np.full(n_layers,np.nan), np.full(n_layers,np.nan)
+            elif p in [.005] and n_qubits in [14]: 
+                p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
+                mean, error = mutual_info_standard_error(p_i_m_given_theta)
+            elif p in [.005] and n_qubits not in [14]: 
+                mean, error = np.full(n_layers,np.nan), np.full(n_layers,np.nan)
+            elif p in [0, .05, .1] and n_qubits in [12,14,16]:
                 p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
                 mean, error = mutual_info_standard_error(p_i_m_given_thetas)
             elif p in [.2,.3,.5] and n_qubits == 16:
@@ -46,6 +57,9 @@ if __name__ == "__main__":
 
             results_for_each_p.append(mean[examined_layer])
             er_each_p.append(error[examined_layer])
+
+        print(probs)
+        print(results_for_each_p)
 
         plt.errorbar(x=probs, y=results_for_each_p, yerr = er_each_p, label = f"{n_qubits}", marker='.')
 
