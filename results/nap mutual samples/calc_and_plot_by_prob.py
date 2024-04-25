@@ -21,7 +21,7 @@ if __name__ == "__main__":
         results_for_each_p = []
         er_each_p = []
 
-        examined_layer = 2*n_qubits
+        examined_layer = 2
         print("examined layer", examined_layer)
 
         for j, p in enumerate(probs):
@@ -29,12 +29,12 @@ if __name__ == "__main__":
             # TODO: Rename data files to make this less horrific 
             if p in [.01] and n_qubits in [10,12,14]:
                 p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
-                mean, error = mutual_info_standard_error(p_i_m_given_theta)
+                mean, error = mutual_info_standard_error(p_i_m_given_thetas)
             elif p in [.01] and n_qubits not in [10,12,14]:
                 mean, error = np.full(n_layers,np.nan), np.full(n_layers,np.nan)
             elif p in [.005] and n_qubits in [14]: 
                 p_i_m_given_thetas = np.load(f"{n_qubits}_{p}_layeredresults_samples_nap_10000.npy")
-                mean, error = mutual_info_standard_error(p_i_m_given_theta)
+                mean, error = mutual_info_standard_error(p_i_m_given_thetas)
             elif p in [.005] and n_qubits not in [14]: 
                 mean, error = np.full(n_layers,np.nan), np.full(n_layers,np.nan)
             elif p in [0, .05, .1] and n_qubits in [12,14,16]:
