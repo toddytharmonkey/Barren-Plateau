@@ -15,7 +15,7 @@ def load_and_aggregate_data(directory):
 
     # Initialize the aggregated data array
     aggregated_data = np.empty(
-        (len(num_qubits_values), len(p_values), n_layers, 3)
+        (len(num_qubits_values), len(p_values), 3)
     )  # 2 for mean and error
     aggregated_data.fill(np.nan)  # Fill with NaNs to indicate missing data
 
@@ -27,41 +27,41 @@ def load_and_aggregate_data(directory):
                 if file_found:
                     break
                 if p_value == 0 and num_qubits < 18:
-                    pass
+                    continue
                 else:
                     filename = f"{num_qubits}_{p_value}_{n_layers}layers_nap_{nap}.npy"
 
                     path = os.path.join(directory, filename)
                     if os.path.isfile(path):
                         file_data = np.load(path)
+                        print("file_data shape", file_data.shape)
                         file_found = True 
-                        mean, confidence_interval = mutual_info_bootstrap(file_data)
+                        mean, confidence_interval = mutual_info_bootstrap(file_data, 2*num_qubits)
                     else:
                         continue
                         # Calculate mean and error across the axis corresponding to different samples (assuming axis 0)
                         #
-                print(error[2])
-                print(mean[2])
-                # Store the results in the array
-                aggregated_data[i, j, :, 0] = mean  # Storing mean
-                aggregated_data[i, j, :, 1] = confidence_interval.low  # Storing error
-                aggregated_data[i,j,:,2] = confidence_interval.high
 
-    # Check for any NaN values in the aggregated data
-    if np.isnan(aggregated_data).any():
-        # Create a detailed error report
-        empty_cells = np.where(np.isnan(aggregated_data))
-        detailed_errors = []
-        for idx in zip(*empty_cells):
-            detailed_errors.append(
-                f"Empty cell found at num_qubits={num_qubits_values[idx[0]]}, p_value={p_values[idx[1]]}, layer={idx[2]}"
-            )
-        error_message = "\n".join(detailed_errors)
-        raise ValueError(
-            f"Some entries in the aggregated data array are empty. Please check the source files. Details:\n{error_message}"
-        )
+                # Store the results in the array
+                aggregated_data[i, j, 0] = mean  # Storing mean
+                aggregated_data[i, j, 1] = confidence_interval.low  # Storing error
+                aggregated_data[i,j,2] = confidence_interval.high
+
+    # # Check for any NaN values in the aggregated data
+    # if np.isnan(aggregated_data).any():
+    #     # Create a detailed error report
+    #     empty_cells = np.where(np.isnan(aggregated_data))
+    #     detailed_errors = []
+    #     for idx in zip(*empty_cells):
+    #         detailed_errors.append(
+    #             f"Empty cell found at num_qubits={num_qubits_values[idx[0]]}, p_value={p_values[idx[1]]}, layer={idx[2]}"
+    #         )
+    #     error_message = "\n".join(detailed_errors)
+    #     raise ValueError(
+    #         f"Some entries in the aggregated data array are empty. Please check the source files. Details:\n{error_message}"
+    #     )
     # Save the aggregated data
-    np.save(os.path.join(directory, "aggregated_data.npy"), aggregated_data)
+    np.save(os.path.join(directory, "aggregated_data_bootstrap.npy"), aggregated_data)
     print("Data aggregation complete and saved.")
 
 

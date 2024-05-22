@@ -327,14 +327,18 @@ def mutual_info_standard_error(p_i_m_given_thetas):
 
     mutual_info = mutual_info_changeall(p_i_m_given_thetas)
 
-    return np.mean(mutual_info, axis=0), np.std(mutual_info, axis=0) / np.sqrt(len(p_i_m_given_thetas))
+    return np.mean(mutual_info, axis=0), np.std(mutual_info, axis=0) / np.sqrt(len(mutual_info))
 
-def mutual_info_bootstrap(p_i_m_given_thetas):
+def mutual_info_bootstrap(p_i_m_given_thetas, examined_layer):
 
     rng = np.random.default_rng()
 
     mutual_info = mutual_info_changeall(p_i_m_given_thetas)
 
-    bootstrap_result = bootstrap((mutual_info,), np.mean, confidence_level=.67,random_state=rng)
+    print("mutual info shape", mutual_info.shape) 
 
-    return np.mean(mutual_info, axis=0), bootstrap_result.confidence_interval 
+    mutual_info = mutual_info[:, examined_layer]
+
+    bootstrap_result = bootstrap((mutual_info,), np.mean, confidence_level=.67,random_state=rng)
+    
+    return np.mean(mutual_info), bootstrap_result.confidence_interval 
