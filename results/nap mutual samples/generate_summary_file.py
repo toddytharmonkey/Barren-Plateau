@@ -9,7 +9,7 @@ from MILT_mutual_information import *
 def load_and_aggregate_data(directory):
     # Parameters
     num_qubits_values = list(range(4, 20, 2))
-    p_values = [0, 0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9]
+    p_values = [0, 0.05, 0.1, 0.2,0.22,0.24,0.26,0.28, 0.3, 0.5, 0.7, 0.9]
     n_layers = 60
     nap_values = [10000, 1000]  # Order matters for preference
 
@@ -30,6 +30,7 @@ def load_and_aggregate_data(directory):
                     mean, error = np.load(f"{num_qubits}_0_layeredresults.npy")
                 else:
                     filename = f"{num_qubits}_{p_value}_{n_layers}layers_nap_{nap}.npy"
+                    print(filename)
 
                     path = os.path.join(directory, filename)
                     if os.path.isfile(path):
