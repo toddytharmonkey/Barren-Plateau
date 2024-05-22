@@ -8,7 +8,7 @@ if __name__ == "__main__":
             samples = np.load(f"{q}_{p}_60layers_nap_10000.npy") 
 
             print(samples.shape)
-            samples = np.append(samples, np.load(f"{q}_{p}_layeredresults_samples_nap_10000_secondbatch.npy"))
+            samples = np.append(samples, np.load(f"{q}_{p}_layeredresults_samples_nap_10000_secondbatch.npy"),axis=0)
 
-            np.save(f"{q}_{p}_layeredresults_samples_nap_10000",samples)
+            np.save(f"{q}_{p}_60layers_nap_10000",samples)
     
