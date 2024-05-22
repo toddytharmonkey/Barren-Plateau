@@ -19,28 +19,27 @@ if __name__ == "__main__":
     # results are in shape (num_qubits, num_prob,n_layers,2)
     results = np.load("aggregated_data.npy")
 
-    for i, n_qubits in enumerate(qubits):
+    for examined_layer in range(n_layers):
+        for i, n_qubits in enumerate(qubits):
 
-        results_for_each_p = []
-        er_each_p = []
+            results_for_each_p = []
+            er_each_p = []
 
-        examined_layer = 2*n_qubits
+            for j, p in enumerate(probs):
 
-        for j, p in enumerate(probs):
+                mean = results[i,j,:,0]
+                error = results[i,j,:,1]
+                
+                # Load your data based on n_qubits and p
+                results_for_each_p.append(mean[examined_layer])
+                er_each_p.append(error[examined_layer])
 
-            mean = results[i,j,:,0]
-            error = results[i,j,:,1]
-            
-            # Load your data based on n_qubits and p
-            results_for_each_p.append(mean[examined_layer])
-            er_each_p.append(error[examined_layer])
+            plt.errorbar(x=probs, y=results_for_each_p, yerr = er_each_p, label = f"{n_qubits}", marker='.')
 
-        plt.errorbar(x=probs, y=results_for_each_p, yerr = er_each_p, label = f"{n_qubits}", marker='.')
-
-    plt.xlabel("Probability")
-    plt.ylabel("Mutual information")
-    plt.legend(title="number of qubits")
-    plt.yscale('log') 
-    plt.title(f'Mutual info vs probability at 2n layers')
-    plt.savefig(f"probability_at_layer_2n.png")
-    plt.clf()
+        plt.xlabel("Probability")
+        plt.ylabel("Mutual information")
+        plt.legend(title="number of qubits")
+        plt.yscale('log') 
+        plt.title(f'Mutual info vs probability at {examined_layer} layers')
+        plt.savefig(f"examined_layer_images/probability_at_layer_{examined_layer}.png")
+        plt.clf()
