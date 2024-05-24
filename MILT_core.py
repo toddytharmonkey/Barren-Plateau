@@ -13,7 +13,7 @@ import os
 import numpy as np
 from dask.distributed import Client, as_completed
 
-# quspin is only needed to calculate renyi entropies and is annoying to install
+# quspin is only needed to calculate renyi entropies and isn't compatible with more modern python  
 #import quspin
 
 code_version = "1.2"
@@ -40,8 +40,6 @@ ham_1_1_05 = np.reshape(
 
 """
 Generate gradient variance shots using 3 possible methods for different ansatz.
-
-Code can run on the GPU if a device is available.
 
 Sonny Rappaport, Gaurav Gyawali, Michael Lawler, March 2023
 """
@@ -1044,7 +1042,6 @@ def gradients_HEA(
         # this part definetly needs to be fixed if you actually want to uise gradients
 
         C = Inner(psi, cost_psi).real
-        return C
 
         # Calculate the gradients using eqn 22 in the notes. Note we are not multiplying by p because of MC sampling
         term1 = Inner(psi_list[1], cost_psi)  # first term
@@ -1057,12 +1054,12 @@ def gradients_HEA(
 
         if return_analytic_suite:
             return (
-                C.cpu().numpy(),
-                unaware_gradient.cpu().numpy(),
-                aware_gradient.cpu().numpy(),
+                C,
+                unaware_gradient,
+                aware_gradient,
             )
         else:
-            return unaware_gradient.cpu().numpy(), aware_gradient.cpu().numpy()
+            return unaware_gradient, aware_gradient
 
 
 def layer_rot(
@@ -1141,7 +1138,7 @@ def row_with_one_gradient(n_qubits, psi, parameter, rotation, gradient_qubit):
 
 
 def product_rule_psi(n_qubits, psi, parameter, rotation):
-    original_psi = psi.clone()
+    original_psi = psi.copy()
     psi_result = np.zeros(psi.shape)
     for q in range(n_qubits):
         gradient_psi_term = row_with_one_gradient(
